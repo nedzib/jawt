@@ -7,6 +7,8 @@ La idea es tener un runtime capaz de ejecutar workflows definidos por
 el usuario mediante una composición de nodos independientes, donde la
 salida de un nodo puede convertirse en la entrada del siguiente.
 
+Guía rápida: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+
 ## Concepto
 
 Cada repositorio que use JAWT tiene una carpeta propia:
