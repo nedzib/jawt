@@ -53,7 +53,7 @@ module Jawt
 
     def handle_key(key)
       if @mode == :graph
-        @mode = :list unless QUIT_KEYS.include?(key)
+        @mode = :list if key && !QUIT_KEYS.include?(key)
         return
       end
 
@@ -126,7 +126,7 @@ module Jawt
       $stdout.print(CLEAR)
       $stdout.print(bold(cyan("Grafo: #{wf['name']}")) + "\r\n\r\n")
       if graph && !graph.empty?
-        $stdout.print(graph + "\r\n")
+        $stdout.print(graph.gsub("\n", "\r\n") + "\r\n")
       else
         $stdout.print(red("no se pudo generar el grafo (workflow inválido)") + "\r\n")
       end
