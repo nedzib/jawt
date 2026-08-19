@@ -90,6 +90,17 @@ class DaemonTest < Minitest::Test
     assert_empty daemon.send(:due_workflows)
   end
 
+  def test_deleted_workflow_is_removed
+    path = File.join(@workflows_dir, "hello.workflow")
+    daemon = Jawt::Daemon.new(workflows_dirs: [@workflows_dir], socket_path: @socket)
+    daemon.send(:refresh_workflows)
+    assert_equal 1, daemon.instance_variable_get(:@workflows).size
+
+    File.delete(path)
+    daemon.send(:refresh_workflows)
+    assert_empty daemon.instance_variable_get(:@workflows)
+  end
+
   private
 
   def start_daemon(dirs = [@workflows_dir])

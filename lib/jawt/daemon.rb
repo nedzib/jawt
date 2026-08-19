@@ -290,17 +290,25 @@ module Jawt
       @workflows_dirs.each do |dir|
         next unless Dir.exist?(dir)
 
+        prefix = File.join(dir, "")
         paths = Dir.glob(File.join(dir, "*.workflow")).sort
         current = paths.to_h { |p| [p, File.mtime(p).to_f] }
+
+        removed = @mutex.synchronize do
+          @workflows.keys.select { |p| p.start_with?(prefix) && !current.key?(p) }
+        end
 
         changed = current.any? do |path, mtime|
           existing = @mutex.synchronize { @workflows[path] }
           existing.nil? || existing["mtime"] != mtime
         end
 
-        next unless changed
+        next if !changed && removed.empty?
 
-        @mutex.synchronize { paths.each { |path| reload_workflow(path) } }
+        @mutex.synchronize do
+          paths.each { |path| reload_workflow(path) }
+          removed.each { |path| @workflows.delete(path) }
+        end
       end
     end
 
