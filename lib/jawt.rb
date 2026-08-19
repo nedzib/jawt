@@ -8,6 +8,9 @@ require_relative "jawt/validator"
 require_relative "jawt/graph"
 require_relative "jawt/logger"
 require_relative "jawt/runner"
+require_relative "jawt/daemon"
+require_relative "jawt/client"
+require_relative "jawt/console"
 require_relative "jawt/cli"
 
 module Jawt

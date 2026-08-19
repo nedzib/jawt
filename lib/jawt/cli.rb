@@ -20,6 +20,8 @@ module Jawt
       when "validate" then cmd_validate(argv)
       when "workflow" then cmd_workflow(argv)
       when "node" then cmd_node(argv)
+      when "daemon" then cmd_daemon(argv)
+      when "console" then cmd_console(argv)
       when "status" then cmd_status
       when "-v", "--version"
         puts "jawt #{VERSION}"
@@ -49,6 +51,11 @@ module Jawt
           jawt workflow edit <nombre>
           jawt node list
           jawt node create <nombre>
+          jawt daemon start
+          jawt daemon stop
+          jawt daemon status
+          jawt daemon run <workflow>
+          jawt console
           jawt status
       TEXT
     end
@@ -112,6 +119,91 @@ module Jawt
         warn "subcomando desconocido: #{sub}"
         exit 1
       end
+    end
+
+    def cmd_daemon(argv)
+      sub = argv.shift || "status"
+      case sub
+      when "start" then daemon_start
+      when "stop" then daemon_stop
+      when "status" then daemon_status
+      when "run" then daemon_run(argv.first)
+      else
+        warn "subcomando desconocido: #{sub}"
+        exit 1
+      end
+    end
+
+    def cmd_console(argv)
+      once = argv.include?("--once")
+      socket = Daemon::DEFAULT_SOCKET
+
+      unless File.exist?(socket)
+        warn "el daemon no está corriendo. Ejecuta 'jawt daemon start'"
+        exit 1
+      end
+
+      client = DaemonClient.new(socket_path: socket).connect
+      Console.new(client).run(once: once)
+    ensure
+      client&.close
+    end
+
+    def daemon_start
+      if File.exist?(Daemon::DEFAULT_SOCKET)
+        puts "el daemon ya está corriendo"
+        return
+      end
+
+      pid = fork { Daemon.start_daemon }
+      puts green("daemon iniciado") + "  pid #{pid}"
+      puts "socket: #{Daemon::DEFAULT_SOCKET}"
+    end
+
+    def daemon_stop
+      socket = Daemon::DEFAULT_SOCKET
+      unless File.exist?(socket)
+        warn "el daemon no está corriendo"
+        return
+      end
+
+      DaemonClient.new(socket_path: socket).connect.stop
+      puts green("daemon detenido")
+    rescue Errno::ENOENT, Errno::ECONNREFUSED, Errno::EPIPE
+      warn "no se pudo detener el daemon"
+    end
+
+    def daemon_status
+      socket = Daemon::DEFAULT_SOCKET
+      unless File.exist?(socket)
+        puts "daemon: no corriendo"
+        return
+      end
+
+      client = DaemonClient.new(socket_path: socket).connect
+      data = client.request("status")
+      puts "daemon: corriendo"
+      puts "  workflows: #{data['workflows']}"
+      puts "  runs:      #{data['runs']}"
+    rescue Errno::ENOENT, Errno::ECONNREFUSED
+      puts "daemon: no corriendo"
+    ensure
+      client&.close
+    end
+
+    def daemon_run(name)
+      abort "faltan argumentos: jawt daemon run <workflow>" if name.to_s.empty?
+
+      socket = Daemon::DEFAULT_SOCKET
+      abort "el daemon no está corriendo (ejecuta 'jawt daemon start')" unless File.exist?(socket)
+
+      client = DaemonClient.new(socket_path: socket).connect
+      data = client.request("run", "workflow" => name)
+      puts "ejecutando '#{name}' -> #{data['run_id']}"
+    rescue Errno::ENOENT, Errno::ECONNREFUSED
+      abort "el daemon no está corriendo"
+    ensure
+      client&.close
     end
 
     def cmd_status

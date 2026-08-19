@@ -295,7 +295,11 @@ jawt node edit run
 jawt node list
 jawt validate
 jawt status
-jawt console [deploy]
+jawt daemon start
+jawt daemon stop
+jawt daemon status
+jawt daemon run deploy
+jawt console
 ```
 
 La edición puede ser interactiva:
@@ -310,16 +314,24 @@ $ jawt workflow edit deploy
 > save
 ```
 
-## Consola de ejecución
+## Consola y daemon
 
-`jawt run --watch deploy` o `jawt console deploy` abre una vista tipo
-consola que permite:
+JAWT corre como servicio (`jawt daemon start`) para orquestar las
+ejecuciones de los workflows configurados. El daemon:
 
-- Ver el estado de cada nodo en vivo (`pending`, `running`, `success`,
-  `failed`, `skipped`).
-- Leer logs y stdout/stderr por nodo.
-- Ver la duración y el orden de ejecución.
-- Detener o reintentar la ejecución.
+- Detecta y valida los workflows de `.jawt/workflows/`.
+- Ejecuta workflows y mantiene el historial de ejecuciones.
+- Expone un socket Unix para los clientes (CLI y consola).
+- Persiste logs por ejecución en `~/.config/jawt/logs/`.
+
+La consola (`jawt console`) se conecta al daemon y muestra en vivo:
+
+- El estado de validación de cada workflow.
+- Las ejecuciones activas y finalizadas.
+- Los logs de la última ejecución.
+- Comandos: `[r]` ejecutar, `[↑/↓]` mover, `[q]` salir.
+
+Sin TTY, `jawt console --once` imprime el estado y termina.
 
 ## Mapa de flujos en la terminal
 
@@ -331,13 +343,10 @@ y muestra los valores que fluyen entre ellos.
 
 ## Validación y daemon
 
-JAWT tiene un proceso que detecta y valida los repositorios
-configurados.
+`jawt validate` ejecuta la validación de forma manual.
 
-La idea inicial es usar un LaunchAgent/PLIST en macOS para ejecutar
-periódicamente la validación.
-
-El proceso detecta:
+El daemon (`jawt daemon start`) mantiene la validación y orquesta las
+ejecuciones de forma continua. Detecta:
 
 - Nuevos repositorios.
 - Nuevos workflows.
@@ -347,12 +356,6 @@ El proceso detecta:
 - Errores en las conexiones.
 - Outputs incompatibles con inputs.
 - Workflows inválidos.
-
-También es posible ejecutar la validación manualmente:
-
-```text
-jawt validate
-```
 
 ## Principio del proyecto
 
@@ -384,3 +387,28 @@ El resultado es un kit de automatización programable para developers,
 donde un workflow puede ser tan simple como ejecutar tres comandos
 encadenados o tan complejo como un grafo que combine CLI, APIs,
 scripts, condiciones, agentes de IA y herramientas del proyecto.
+
+## Roadmap
+
+Hecho:
+
+- Runtime y CLI (`init`, `validate`, `workflow`, `node`).
+- Modelo de nodos y nodos base (`start`, `end`, `condition`,
+  `multiplex`, `run`).
+- Validador con reglas de coherencia.
+- Mapa de flujos ASCII (`workflow graph`).
+- Manejo de fallos (`stop`, `continue`, `retry`).
+- Multiplexor con fan-out.
+- Daemon como servicio + consola (`daemon`, `console`).
+
+Pendiente:
+
+- Nodos de usuario: ejecutar el `main.sh` propio de cada nodo.
+- `retry` con backoff real.
+- `join` para recoger los resultados del fan-out.
+- LaunchAgent/PLIST en macOS para arrancar el daemon al iniciar
+  sesión.
+- Auto-run al detectar cambios en un workflow.
+- Múltiples repositorios configurados en `config.toml`.
+- Colorear el mapa de flujos según el estado durante la ejecución.
+- Empaquetar e instalar `jawt` como gem global.
