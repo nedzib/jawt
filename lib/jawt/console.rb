@@ -74,45 +74,46 @@ module Jawt
       @selected = @selected % workflows.size unless workflows.empty?
       next_name = next_in_queue(workflows)
 
-      out = ["JAWT console"]
+      out = [bold(cyan("JAWT console"))]
       out << ""
-      out << "Workflows:"
+      out << bold("Workflows:")
       workflows.each_with_index do |wf, i|
         out << workflow_line(wf, i, next_name)
         if i == @selected && !wf["valid"]
-          wf["errors"].each { |e| out << "        - #{e}" }
+          wf["errors"].each { |e| out << "        #{red('- ' + e)}" }
         end
       end
       out << ""
-      out << "Runs:"
+      out << bold("Runs:")
       runs.each { |run| out << run_line(run) }
       out << ""
-      out << "Logs (#{latest ? latest['id'] : 'ninguno'}):"
+      out << bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
       if latest
-        @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| out << "  #{l}" }
+        @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| out << "  #{dim(l)}" }
       end
       out << ""
-      out << "[r] ejecutar seleccionado   [↑/↓] mover   [q / Ctrl-C] salir"
+      out << dim("[r] ejecutar seleccionado   [↑/↓] mover   [q / Ctrl-C] salir")
       $stdout.print(CLEAR)
       $stdout.print(out.join("\r\n"))
       $stdout.flush
     end
 
     def workflow_line(wf, index, next_name)
-      cursor = index == @selected ? ">" : " "
-      mark = wf["valid"] ? "✓" : "✗"
-      name = display_name(wf)
+      selected = index == @selected
+      cursor = selected ? ">" : " "
+      mark = wf["valid"] ? green("✓") : red("✗")
 
-      line = "  #{cursor} #{mark} #{name}"
-      line += "   #{schedule_text(wf)}" unless schedule_text(wf).empty?
-      line += "   << siguiente" if wf["name"] == next_name
-      line += "   (ejecutando)" if wf["running"]
-      line
-    end
-
-    def display_name(wf)
+      name = wf["name"]
+      name = bold(cyan(name)) if selected
       repo = File.basename(wf["repo"].to_s)
-      repo.empty? ? wf["name"] : "#{wf['name']} (#{repo})"
+      label = repo.empty? ? name : "#{name} #{dim("(#{repo})")}"
+
+      line = "  #{cursor} #{mark} #{label}"
+      sched = schedule_text(wf)
+      line += "   #{dim(sched)}" unless sched.empty?
+      line += "   #{bold(magenta('<< siguiente'))}" if wf["name"] == next_name
+      line += "   #{yellow('(ejecutando)')}" if wf["running"]
+      line
     end
 
     def schedule_text(wf)
@@ -132,8 +133,12 @@ module Jawt
     end
 
     def run_line(run)
-      mark = { "running" => "●", "success" => "✓", "failed" => "✗" }[run["status"]] || " "
-      "  #{mark} #{run['id']}  #{run['workflow']}  #{run['status']}"
+      case run["status"]
+      when "running" then "#{yellow('●')} #{run['id']}  #{run['workflow']}  #{yellow('running')}"
+      when "success" then "#{green('✓')} #{run['id']}  #{run['workflow']}  #{green('success')}"
+      when "failed"  then "#{red('✗')} #{run['id']}  #{run['workflow']}  #{red('failed')}"
+      else "  #{run['id']}  #{run['workflow']}  #{run['status']}"
+      end
     end
 
     def format_interval(seconds)
@@ -161,19 +166,60 @@ module Jawt
       runs = @client.request("runs")
       next_name = next_in_queue(workflows)
 
-      puts "Workflows:"
+      puts bold("Workflows:")
       workflows.each do |wf|
-        mark = wf["valid"] ? "✓" : "✗"
+        mark = wf["valid"] ? green("✓") : red("✗")
         extra = [schedule_text(wf), (wf["name"] == next_name ? "siguiente" : nil)]
                 .compact.join(" · ")
         line = "  #{mark} #{display_name(wf)}"
-        line += "   #{extra}" unless extra.empty?
+        line += "   #{dim(extra)}" unless extra.empty?
         puts line
-        wf["errors"].each { |e| puts "      - #{e}" } unless wf["valid"]
+        wf["errors"].each { |e| puts "      #{red('- ' + e)}" } unless wf["valid"]
       end
       puts
-      puts "Runs:"
+      puts bold("Runs:")
       runs.each { |run| puts run_line(run) }
+    end
+
+    def display_name(wf)
+      repo = File.basename(wf["repo"].to_s)
+      repo.empty? ? wf["name"] : "#{wf['name']} (#{repo})"
+    end
+
+    def colorize?
+      $stdout.tty?
+    end
+
+    def ansi(code, text)
+      colorize? ? "\e[#{code}m#{text}\e[0m" : text
+    end
+
+    def green(text)
+      ansi("32", text)
+    end
+
+    def red(text)
+      ansi("31", text)
+    end
+
+    def yellow(text)
+      ansi("33", text)
+    end
+
+    def cyan(text)
+      ansi("36", text)
+    end
+
+    def magenta(text)
+      ansi("35", text)
+    end
+
+    def dim(text)
+      ansi("2", text)
+    end
+
+    def bold(text)
+      ansi("1", text)
     end
   end
 end
