@@ -101,6 +101,18 @@ class DaemonTest < Minitest::Test
     assert_empty daemon.instance_variable_get(:@workflows)
   end
 
+  def test_graph_command
+    thread = start_daemon
+    client = Jawt::DaemonClient.new(socket_path: @socket).connect
+
+    graph = client.request("graph", "path" => File.join(@workflows_dir, "hello.workflow"))
+    assert_includes graph, "start"
+    assert_includes graph, "cmd"
+  ensure
+    client&.stop
+    thread&.join(2)
+  end
+
   private
 
   def start_daemon(dirs = [@workflows_dir])

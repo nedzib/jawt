@@ -137,6 +137,7 @@ module Jawt
       when "list" then client.send(response(id, true, list_data))
       when "runs" then client.send(response(id, true, runs_data))
       when "run" then handle_run(client, id, request)
+      when "graph" then handle_graph(client, id, request)
       when "logs" then client.send(response(id, true, logs_for(request["run_id"])))
       when "status" then client.send(response(id, true, daemon_status))
       when "stop" then handle_stop(client, id)
@@ -150,6 +151,17 @@ module Jawt
         client.send(response(id, true, "run_id" => run_id))
       else
         client.send(response(id, false, nil, "workflow no encontrado"))
+      end
+    rescue Error => e
+      client.send(response(id, false, nil, e.message))
+    end
+
+    def handle_graph(client, id, request)
+      graph = graph_for(request["path"] || request["workflow"])
+      if graph
+        client.send(response(id, true, graph))
+      else
+        client.send(response(id, false, nil, "no se pudo generar el grafo"))
       end
     rescue Error => e
       client.send(response(id, false, nil, e.message))
@@ -210,15 +222,9 @@ module Jawt
     end
 
     def start_run(key)
-      matches = @mutex.synchronize do
-        @workflows.values.select { |w| w["name"] == key.to_s || w["path"] == key.to_s }
-      end
-      return nil if matches.empty?
-      if matches.size > 1
-        raise Error, "workflow ambiguo '#{key}': #{matches.map { |w| w['path'] }.join(', ')}"
-      end
+      workflow = find_workflow(key)
+      return nil unless workflow
 
-      workflow = matches.first
       run_id = next_run_id
       run = Run.new(id: run_id, workflow: workflow["name"], path: workflow["path"],
                     status: :running, started_at: Time.now, finished_at: nil,
@@ -227,6 +233,25 @@ module Jawt
 
       Thread.new { execute_run(run, workflow) }
       run_id
+    end
+
+    def graph_for(key)
+      workflow = find_workflow(key)
+      return nil unless workflow && workflow["workflow"]
+
+      Graph.new(workflow["workflow"]).render
+    end
+
+    def find_workflow(key)
+      matches = @mutex.synchronize do
+        @workflows.values.select { |w| w["name"] == key.to_s || w["path"] == key.to_s }
+      end
+      return nil if matches.empty?
+      if matches.size > 1
+        raise Error, "workflow ambiguo '#{key}': #{matches.map { |w| w['path'] }.join(', ')}"
+      end
+
+      matches.first
     end
 
     def run_due_schedules

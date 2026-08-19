@@ -13,6 +13,7 @@ module Jawt
     def initialize(client)
       @client = client
       @selected = 0
+      @mode = :list
     end
 
     def run(once: false)
@@ -51,8 +52,14 @@ module Jawt
     end
 
     def handle_key(key)
+      if @mode == :graph
+        @mode = :list unless QUIT_KEYS.include?(key)
+        return
+      end
+
       case key
       when "r", "R" then run_selected
+      when "g", "G" then @mode = :graph
       when "\e[A", "k" then @selected = [@selected - 1, 0].max
       when "\e[B", "j" then @selected += 1
       end
@@ -67,6 +74,14 @@ module Jawt
     end
 
     def render_fullscreen
+      if @mode == :graph
+        render_graph
+      else
+        render_list
+      end
+    end
+
+    def render_list
       workflows = @client.request("list")
       runs = @client.request("runs")
       latest = runs.first
@@ -92,9 +107,30 @@ module Jawt
         @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| out << "  #{dim(l)}" }
       end
       out << ""
-      out << dim("[r] ejecutar seleccionado   [↑/↓] mover   [q / Ctrl-C] salir")
+      out << dim("[r] ejecutar   [g] grafo   [↑/↓] mover   [q / Ctrl-C] salir")
       $stdout.print(CLEAR)
       $stdout.print(out.join("\r\n"))
+      $stdout.flush
+    end
+
+    def render_graph
+      workflows = @client.request("list")
+      if workflows.empty?
+        @mode = :list
+        return
+      end
+
+      wf = workflows[@selected % workflows.size]
+      graph = @client.request("graph", "path" => wf["path"])
+
+      $stdout.print(CLEAR)
+      $stdout.print(bold(cyan("Grafo: #{wf['name']}")) + "\r\n\r\n")
+      if graph && !graph.empty?
+        $stdout.print(graph + "\r\n")
+      else
+        $stdout.print(red("no se pudo generar el grafo (workflow inválido)") + "\r\n")
+      end
+      $stdout.print("\r\n" + dim("cualquier tecla para volver · q / Ctrl-C para salir") + "\r\n")
       $stdout.flush
     end
 
