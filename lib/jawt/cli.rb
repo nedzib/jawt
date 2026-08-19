@@ -159,7 +159,14 @@ module Jawt
         return
       end
 
-      pid = fork { Daemon.start_daemon }
+      pid = fork do
+        Process.setsid
+        $stdin.reopen(File::NULL)
+        $stdout.reopen(File::NULL)
+        $stderr.reopen(File::NULL)
+        Daemon.start_daemon
+      end
+      Process.detach(pid)
       puts green("daemon iniciado") + "  pid #{pid}"
       puts "socket: #{Daemon::DEFAULT_SOCKET}"
     end

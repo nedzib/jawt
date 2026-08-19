@@ -119,6 +119,29 @@ class ValidatorTest < Minitest::Test
     assert result.errors.any? { |e| e.include?("capacidad requerida") }
   end
 
+  def test_array_field_not_consumed_is_valid
+    node = Jawt::Node.new(
+      name: "mixed",
+      outputs: { "count" => "integer", "list" => "array<string>" },
+      ports: { "out" => ["count", "list"] }
+    )
+    registry = Jawt::Registry.new(Jawt::Builtins.all.merge("mixed" => node))
+    result = Jawt::Validator.new(registry).validate(Jawt::Workflow.from_yaml(<<~YAML))
+      workflow:
+        name: x
+        nodes:
+          start: { type: start }
+          m: { type: mixed }
+          end: { type: end }
+        edges:
+          - from: start.out
+            to: m.in
+          - from: m.out
+            to: end.in
+    YAML
+    assert result.ok?, result.errors.join("\n")
+  end
+
   private
 
   def validate(yaml)

@@ -143,13 +143,19 @@ module Jawt
         from_node = @registry.fetch(spec.type)
         next unless from_node
 
-        emits_array = from_node.port_outputs(edge.from.port).any? { |f| from_node.output_type(f)&.array? }
-        next unless emits_array
+        to_spec = workflow.node(edge.to.node)
+        next unless to_spec
 
-        to_node = @registry.fetch(workflow.node(edge.to.node).type)
-        next if to_node && (to_node.name == "multiplex" || to_node.cardinality == "array")
+        to_node = @registry.fetch(to_spec.type)
+        next unless to_node
 
-        "el puerto '#{edge.from.node}.#{edge.from.port}' emite un array pero '#{edge.to.node}' no es multiplex ni array"
+        array_fields = from_node.port_outputs(edge.from.port).select do |field|
+          from_node.output_type(field)&.array? && to_node.input(field)
+        end
+        next if array_fields.empty?
+        next if to_node.name == "multiplex" || to_node.cardinality == "array"
+
+        "el puerto '#{edge.from.node}.#{edge.from.port}' emite un array ('#{array_fields.join(', ')}') pero '#{edge.to.node}' no es multiplex ni array"
       end
     end
 
