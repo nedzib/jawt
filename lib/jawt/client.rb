@@ -73,6 +73,11 @@ module Jawt
       end
     rescue IOError, Errno::EPIPE, JSON::ParserError
       nil
+    ensure
+      @mutex.synchronize do
+        @pending.each_value { |q| q << { "ok" => false, "error" => "conexión perdida con el daemon" } }
+        @pending.clear
+      end
     end
   end
 end

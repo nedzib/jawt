@@ -137,7 +137,7 @@ module Jawt
       when "list" then client.send(response(id, true, list_data))
       when "runs" then client.send(response(id, true, runs_data))
       when "run" then handle_run(client, id, request)
-      when "logs" then client.send(response(id, true, "logs" => logs_for(request["run_id"])))
+      when "logs" then client.send(response(id, true, logs_for(request["run_id"])))
       when "status" then client.send(response(id, true, daemon_status))
       when "stop" then handle_stop(client, id)
       else client.send(response(id, false, nil, "comando desconocido"))
@@ -165,15 +165,26 @@ module Jawt
     end
 
     def list_data
+      now = Time.now
       @mutex.synchronize do
         @workflows.values.map do |wf|
-          {
+          schedule = wf["workflow"]&.schedule
+          entry = {
             "name" => wf["name"],
             "path" => wf["path"],
             "repo" => wf["repo"],
             "valid" => wf["valid"],
-            "errors" => wf["errors"]
+            "errors" => wf["errors"],
+            "scheduled" => !schedule.nil?,
+            "running" => running_for_path?(wf["path"])
           }
+          if schedule&.interval?
+            last = @last_run[wf["path"]]
+            next_at = (last || now) + schedule.interval_seconds
+            entry["schedule_every"] = schedule.interval_seconds
+            entry["due_in"] = [next_at - now, 0].max.to_i
+          end
+          entry
         end
       end
     end
