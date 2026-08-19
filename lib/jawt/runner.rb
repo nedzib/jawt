@@ -107,7 +107,10 @@ module Jawt
 
         source.outputs.each { |k, v| inputs[k] = v }
       end
-      inputs
+
+      inputs.each_with_object({}) do |(k, v), acc|
+        acc[k] = v.is_a?(String) ? resolve(v, results) : v
+      end
     end
 
     def execute(spec, node, inputs, workflow, results)

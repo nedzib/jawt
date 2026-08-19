@@ -289,6 +289,15 @@ workflow:
 El intervalo acepta `s`, `m`, `h` y `d` (segundos, minutos, horas y
 días).
 
+Los valores de configuración de un nodo pueden interpolar outputs de
+nodos previos con `${nodo.campo}`:
+
+```yaml
+notify:
+  type: notify
+  message: "Tienes ${pr-assigned.count} PRs asignados"
+```
+
 ## Separación entre workflows y nodos
 
 La arquitectura tiene dos niveles.

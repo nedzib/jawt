@@ -172,6 +172,38 @@ class RunnerTest < Minitest::Test
     assert_equal :success, worker.status
   end
 
+  def test_config_values_resolve_templates
+    report = run_workflow(<<~YAML)
+      workflow:
+        name: tpl
+        nodes:
+          start: { type: start }
+          counter:
+            type: run
+            command: "echo 7"
+            shell: /bin/sh
+            interactive: false
+            login: false
+          echoer:
+            type: run
+            command: "echo count=${counter.exit_code}"
+            shell: /bin/sh
+            interactive: false
+            login: false
+          end: { type: end }
+        edges:
+          - from: start.out
+            to: counter.in
+          - from: counter.out
+            to: echoer.in
+          - from: echoer.out
+            to: end.in
+    YAML
+
+    assert report.success?, report.nodes.map { |_, r| r.error }.compact.inspect
+    assert_includes report.nodes["echoer"].outputs["stdout"], "count=0"
+  end
+
   private
 
   def run_workflow(yaml)
