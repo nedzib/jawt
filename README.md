@@ -292,6 +292,28 @@ requires:
 
 Y JAWT valida si esas capacidades existen antes de ejecutar.
 
+### Múltiples repositorios
+
+`~/.config/jawt/config.toml` declara los repositorios que JAWT vigila:
+
+```toml
+repos = [
+  "/Users/tu/proyecto-a",
+  "/Users/tu/proyecto-b",
+]
+```
+
+Se gestionan con la CLI:
+
+```text
+jawt repo add /Users/tu/proyecto-a
+jawt repo remove /Users/tu/proyecto-a
+jawt repo list
+```
+
+`jawt validate`, `jawt status` y el daemon operan sobre todos los
+repositorios configurados (además del directorio actual).
+
 ## CLI
 
 Toda la interacción con JAWT ocurre desde la terminal:
@@ -307,6 +329,9 @@ jawt workflow list
 jawt node create run
 jawt node edit run
 jawt node list
+jawt repo add /Users/tu/proyecto
+jawt repo remove /Users/tu/proyecto
+jawt repo list
 jawt validate
 jawt status
 jawt daemon start
@@ -415,6 +440,7 @@ Hecho:
 - Multiplexor con fan-out.
 - Daemon como servicio + consola (`daemon`, `console`).
 - Nodos de usuario: ejecución del `main.sh` propio de cada nodo.
+- Múltiples repositorios configurados en `config.toml`.
 
 Pendiente:
 
@@ -423,6 +449,5 @@ Pendiente:
 - LaunchAgent/PLIST en macOS para arrancar el daemon al iniciar
   sesión.
 - Auto-run al detectar cambios en un workflow.
-- Múltiples repositorios configurados en `config.toml`.
 - Colorear el mapa de flujos según el estado durante la ejecución.
 - Empaquetar e instalar `jawt` como gem global.

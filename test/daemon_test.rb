@@ -56,10 +56,26 @@ class DaemonTest < Minitest::Test
     thread&.join(2)
   end
 
+  def test_discovers_workflows_from_multiple_repos
+    other_dir = File.join(@dir, "other")
+    FileUtils.mkdir_p(other_dir)
+    File.write(File.join(other_dir, "review.workflow"), workflow_yaml("review", "echo review"))
+
+    thread = start_daemon([@workflows_dir, other_dir])
+    client = Jawt::DaemonClient.new(socket_path: @socket).connect
+
+    names = client.request("list").map { |w| w["name"] }
+    assert_includes names, "hello"
+    assert_includes names, "review"
+  ensure
+    client&.stop
+    thread&.join(2)
+  end
+
   private
 
-  def start_daemon
-    daemon = Jawt::Daemon.new(workflows_dir: @workflows_dir, socket_path: @socket)
+  def start_daemon(dirs = [@workflows_dir])
+    daemon = Jawt::Daemon.new(workflows_dirs: dirs, socket_path: @socket)
     thread = Thread.new { daemon.start }
     wait_for { File.exist?(@socket) }
     thread

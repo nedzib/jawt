@@ -58,7 +58,7 @@ module Jawt
       return if workflows.empty?
 
       @selected = @selected % workflows.size
-      @client.request("run", "workflow" => workflows[@selected]["name"])
+      @client.request("run", "path" => workflows[@selected]["path"])
     end
 
     def render
@@ -76,7 +76,9 @@ module Jawt
       workflows.each_with_index do |wf, i|
         mark = wf["valid"] ? "✓" : "✗"
         cursor = i == @selected ? ">" : " "
-        out << "  #{cursor} #{mark} #{wf['name']}"
+        repo = File.basename(wf["repo"].to_s)
+        label = repo.empty? ? wf["name"] : "#{wf['name']} (#{repo})"
+        out << "  #{cursor} #{mark} #{label}"
         wf["errors"].each { |e| out << "      - #{e}" } unless wf["valid"]
       end
       out << ""

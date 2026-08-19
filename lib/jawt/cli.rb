@@ -22,6 +22,7 @@ module Jawt
       when "node" then cmd_node(argv)
       when "daemon" then cmd_daemon(argv)
       when "console" then cmd_console(argv)
+      when "repo" then cmd_repo(argv)
       when "status" then cmd_status
       when "-v", "--version"
         puts "jawt #{VERSION}"
@@ -51,6 +52,9 @@ module Jawt
           jawt workflow edit <nombre>
           jawt node list
           jawt node create <nombre>
+          jawt repo add <directorio>
+          jawt repo remove <directorio>
+          jawt repo list
           jawt daemon start
           jawt daemon stop
           jawt daemon status
@@ -73,22 +77,22 @@ module Jawt
 
     def cmd_validate(argv)
       registry = Registry.default
-      workflows = workflow_files(argv.first)
+      workflows = collect_workflows(argv.first)
       all_ok = true
 
-      workflows.each do |name, path|
-        workflow = Workflow.from_yaml(File.read(path))
+      workflows.each do |wf|
+        workflow = Workflow.from_yaml(File.read(wf[:path]))
         result = Validator.new(registry).validate(workflow)
         if result.ok?
-          puts green("OK") + "  #{name}"
+          puts green("OK") + "  #{wf[:name]}"
         else
           all_ok = false
-          puts red("ERROR") + "  #{name}"
+          puts red("ERROR") + "  #{wf[:name]}"
           result.errors.each { |e| puts "    - #{e}" }
         end
       rescue Error => e
         all_ok = false
-        puts red("ERROR") + "  #{name}: #{e.message}"
+        puts red("ERROR") + "  #{wf[:name]}: #{e.message}"
       end
 
       exit 1 unless all_ok
@@ -202,13 +206,67 @@ module Jawt
       puts "ejecutando '#{name}' -> #{data['run_id']}"
     rescue Errno::ENOENT, Errno::ECONNREFUSED
       abort "el daemon no está corriendo"
+    rescue RuntimeError => e
+      abort e.message
     ensure
       client&.close
     end
 
+    def cmd_repo(argv)
+      sub = argv.shift || "list"
+      case sub
+      when "add" then repo_add(argv.first)
+      when "remove" then repo_remove(argv.first)
+      when "list" then repo_list
+      else
+        warn "subcomando desconocido: #{sub}"
+        exit 1
+      end
+    end
+
+    def repo_add(path)
+      abort "faltan argumentos: jawt repo add <directorio>" if path.to_s.empty?
+
+      config = Config.load
+      config.add_repo(path)
+      puts green("agregado") + "  #{File.expand_path(path)}"
+    end
+
+    def repo_remove(path)
+      abort "faltan argumentos: jawt repo remove <directorio>" if path.to_s.empty?
+
+      config = Config.load
+      config.remove_repo(path)
+      puts green("eliminado") + "  #{File.expand_path(path)}"
+    end
+
+    def repo_list
+      Config.load.repos.each { |r| puts r }
+    end
+
     def cmd_status
-      puts "workflows: #{workflow_files(nil).size}"
+      config = Config.load
+      puts "repos:"
+      config.repos.each { |r| puts "  #{r}" }
+      puts "workflows: #{collect_workflows.size}"
       puts "nodos:     #{Registry.default.names.size}"
+    end
+
+    def collect_workflows(name = nil)
+      Config.load.workflow_dirs.flat_map do |dir|
+        next [] unless Dir.exist?(dir)
+
+        pattern = name ? File.join(dir, "#{name.sub(/\.workflow\z/, '')}.workflow") : File.join(dir, "*.workflow")
+        Dir.glob(pattern)
+      end.map do |path|
+        { name: display_name(path), path: path }
+      end
+    end
+
+    def display_name(path)
+      name = File.basename(path, ".workflow")
+      repo = File.basename(File.dirname(File.dirname(File.dirname(path))))
+      repo == "." || repo == File.basename(Dir.pwd) ? name : "#{name} (#{repo})"
     end
 
     def workflow_create(name)

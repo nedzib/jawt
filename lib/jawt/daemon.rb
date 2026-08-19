@@ -32,11 +32,11 @@ module Jawt
       end
     end
 
-    attr_reader :workflows_dir
+    attr_reader :workflows_dirs
 
-    def initialize(workflows_dir: File.join(Dir.pwd, ".jawt", "workflows"),
+    def initialize(workflows_dir: nil, workflows_dirs: nil,
                    socket_path: DEFAULT_SOCKET, registry: Registry.default)
-      @workflows_dir = workflows_dir
+      @workflows_dirs = Array(workflows_dirs || workflows_dir || Config.load.workflow_dirs)
       @socket_path = socket_path
       @registry = registry
       @server = nil
@@ -70,10 +70,8 @@ module Jawt
     end
 
     def self.start_daemon(argv = [])
-      workflows_dir = File.join(Dir.pwd, ".jawt", "workflows")
-      daemon = new(workflows_dir: workflows_dir)
       write_pid
-      daemon.start
+      new(workflows_dirs: Config.load.workflow_dirs).start
     end
 
     def self.write_pid
@@ -136,12 +134,23 @@ module Jawt
       case request["cmd"]
       when "list" then client.send(response(id, true, list_data))
       when "runs" then client.send(response(id, true, runs_data))
-      when "run" then client.send(response(id, true, "run_id" => start_run(request["workflow"])))
+      when "run" then handle_run(client, id, request)
       when "logs" then client.send(response(id, true, "logs" => logs_for(request["run_id"])))
       when "status" then client.send(response(id, true, daemon_status))
       when "stop" then handle_stop(client, id)
       else client.send(response(id, false, nil, "comando desconocido"))
       end
+    end
+
+    def handle_run(client, id, request)
+      run_id = start_run(request["workflow"] || request["path"])
+      if run_id
+        client.send(response(id, true, "run_id" => run_id))
+      else
+        client.send(response(id, false, nil, "workflow no encontrado"))
+      end
+    rescue Error => e
+      client.send(response(id, false, nil, e.message))
     end
 
     def handle_stop(client, id)
@@ -156,7 +165,13 @@ module Jawt
     def list_data
       @mutex.synchronize do
         @workflows.values.map do |wf|
-          { "name" => wf["name"], "path" => wf["path"], "valid" => wf["valid"], "errors" => wf["errors"] }
+          {
+            "name" => wf["name"],
+            "path" => wf["path"],
+            "repo" => wf["repo"],
+            "valid" => wf["valid"],
+            "errors" => wf["errors"]
+          }
         end
       end
     end
@@ -181,14 +196,18 @@ module Jawt
       }
     end
 
-    def start_run(workflow_name)
-      workflow = @mutex.synchronize do
-        @workflows.values.find { |w| w["name"] == workflow_name.to_s }
+    def start_run(key)
+      matches = @mutex.synchronize do
+        @workflows.values.select { |w| w["name"] == key.to_s || w["path"] == key.to_s }
       end
-      return nil unless workflow
+      return nil if matches.empty?
+      if matches.size > 1
+        raise Error, "workflow ambiguo '#{key}': #{matches.map { |w| w['path'] }.join(', ')}"
+      end
 
+      workflow = matches.first
       run_id = next_run_id
-      run = Run.new(id: run_id, workflow: workflow_name.to_s, status: :running,
+      run = Run.new(id: run_id, workflow: workflow["name"], status: :running,
                     started_at: Time.now, finished_at: nil, report: nil, log: [])
       @mutex.synchronize { @runs[run_id] = run }
 
@@ -237,22 +256,20 @@ module Jawt
     end
 
     def refresh_workflows
-      return unless Dir.exist?(@workflows_dir)
+      @workflows_dirs.each do |dir|
+        next unless Dir.exist?(dir)
 
-      paths = Dir.glob(File.join(@workflows_dir, "*.workflow")).sort
-      current = paths.to_h { |p| [p, File.mtime(p).to_f] }
+        paths = Dir.glob(File.join(dir, "*.workflow")).sort
+        current = paths.to_h { |p| [p, File.mtime(p).to_f] }
 
-      changed = current.any? do |path, mtime|
-        existing = @mutex.synchronize { @workflows[path] }
-        existing.nil? || existing["mtime"] != mtime
-      end
-
-      return unless changed
-
-      @mutex.synchronize do
-        paths.each do |path|
-          reload_workflow(path)
+        changed = current.any? do |path, mtime|
+          existing = @mutex.synchronize { @workflows[path] }
+          existing.nil? || existing["mtime"] != mtime
         end
+
+        next unless changed
+
+        @mutex.synchronize { paths.each { |path| reload_workflow(path) } }
       end
     end
 
@@ -262,6 +279,7 @@ module Jawt
       @workflows[path] = {
         "name" => workflow.name,
         "path" => path,
+        "repo" => repo_for(path),
         "workflow" => workflow,
         "valid" => result.ok?,
         "errors" => result.errors,
@@ -271,11 +289,16 @@ module Jawt
       @workflows[path] = {
         "name" => File.basename(path, ".workflow"),
         "path" => path,
+        "repo" => repo_for(path),
         "workflow" => nil,
         "valid" => false,
         "errors" => [e.message],
         "mtime" => File.mtime(path).to_f
       }
+    end
+
+    def repo_for(path)
+      File.dirname(File.dirname(File.dirname(path)))
     end
 
     class BroadcastLogger
