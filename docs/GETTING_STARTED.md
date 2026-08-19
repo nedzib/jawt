@@ -218,7 +218,58 @@ Para detener el daemon:
 jawt daemon stop
 ```
 
-## 11. Múltiples repositorios
+## 11. Programar un workflow
+
+Un workflow puede declarar un `schedule` para que el daemon lo ejecute
+periódicamente. La clave `every` acepta `s`, `m`, `h` y `d` (segundos,
+minutos, horas y días):
+
+```yaml
+workflow:
+  name: notify-prs
+  schedule:
+    every: 5m
+
+  nodes:
+    start: { type: start }
+    prs:
+      type: pr-assigned
+    notify:
+      type: notify
+      title: "JAWT"
+      message: "Tienes ${prs.count} PR(s) asignados"
+    end: { type: end }
+
+  edges:
+    - from: start.out
+      to: prs.in
+    - from: prs.out
+      to: notify.in
+    - from: notify.out
+      to: end.in
+```
+
+Cómo funciona:
+
+- Solo lo ejecuta el daemon, así que tiene que estar corriendo
+  (`jawt daemon start`). `jawt workflow run` lo corre manualmente una
+  sola vez, ignorando el `schedule`.
+- El daemon detecta el `schedule` al validar el workflow y lo ejecuta
+  cuando toca: la primera vez inmediatamente al arrancar, y luego cada
+  `every`.
+- Solo ejecuta workflows válidos. Si un workflow programado tiene
+  errores de validación, no se ejecuta hasta que los corrijas.
+- No se solapan ejecuciones: si la ejecución anterior de un workflow
+  programado todavía está corriendo, se salta el turno y espera al
+  siguiente intervalo.
+- Puedes ver las ejecuciones y sus logs en la consola (`jawt console`)
+  o con `jawt console --once`.
+
+Para que las ejecuciones programadas sean permanentes (incluso tras
+reiniciar el equipo), configura un LaunchAgent que arranque el daemon
+al iniciar sesión.
+
+## 12. Múltiples repositorios
 
 Registra los repositorios que quieres vigilar:
 
@@ -231,7 +282,7 @@ jawt status
 El daemon y `jawt validate` operan sobre todos los repositorios
 configurados.
 
-## 12. Versionar el workflow con Git
+## 13. Versionar el workflow con Git
 
 Los workflows viven en el repositorio, así que se comparten con el
 equipo:
