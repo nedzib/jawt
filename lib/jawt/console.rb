@@ -74,8 +74,7 @@ module Jawt
       @selected = @selected % workflows.size unless workflows.empty?
       next_name = next_in_queue(workflows)
 
-      out = [CLEAR]
-      out << "JAWT console"
+      out = ["JAWT console"]
       out << ""
       out << "Workflows:"
       workflows.each_with_index do |wf, i|
@@ -94,7 +93,8 @@ module Jawt
       end
       out << ""
       out << "[r] ejecutar seleccionado   [↑/↓] mover   [q / Ctrl-C] salir"
-      $stdout.print(out.join("\n"))
+      $stdout.print(CLEAR)
+      $stdout.print(out.join("\r\n"))
       $stdout.flush
     end
 
