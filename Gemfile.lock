@@ -1,0 +1,37 @@
+PATH
+  remote: .
+  specs:
+    jawt (0.1.0)
+      toml-rb (~> 4.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    citrus (3.0.2)
+    minitest (5.27.0)
+    racc (1.8.1)
+    rake (13.4.2)
+    toml-rb (4.2.1)
+      citrus (~> 3.0, > 3.0)
+      racc (~> 1.7)
+
+PLATFORMS
+  arm64-darwin-23
+  ruby
+
+DEPENDENCIES
+  jawt!
+  minitest (~> 5.0)
+  rake (~> 13.0)
+
+CHECKSUMS
+  bundler (4.0.15) sha256=a4ceb882fe94a0e0ac63cd0813932bbfd631a14e5ac0b7975189b19a4d28d9e7
+  citrus (3.0.2) sha256=4ec2412fc389ad186735f4baee1460f7900a8e130ffe3f216b30d4f9c684f650
+  jawt (0.1.0)
+  minitest (5.27.0) sha256=2d3b17f8a36fe7801c1adcffdbc38233b938eb0b4966e97a6739055a45fa77d5
+  racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
+  rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
+  toml-rb (4.2.1) sha256=e6c40e27905e86a7d38cc252eb4bc12d72c61576c826a358390c30f5de0b9dbb
+
+BUNDLED WITH
+  4.0.15

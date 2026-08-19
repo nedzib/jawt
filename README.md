@@ -117,7 +117,6 @@ Cada nodo vive en `~/.config/jawt/nodes/<nombre>/` y se compone de:
 Ejemplo de `node.toml`:
 
 ```toml
-[id]
 name = "run"
 description = "Ejecuta un comando en el shell"
 
