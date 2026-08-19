@@ -275,6 +275,20 @@ workflow:
       to: end.in
 ```
 
+Un workflow puede declarar un `schedule` para que el daemon lo
+ejecute periódicamente:
+
+```yaml
+workflow:
+  name: notify-prs
+  schedule:
+    every: 5m
+  # ...
+```
+
+El intervalo acepta `s`, `m`, `h` y `d` (segundos, minutos, horas y
+días).
+
 ## Separación entre workflows y nodos
 
 La arquitectura tiene dos niveles.
@@ -443,13 +457,14 @@ Hecho:
 - Daemon como servicio + consola (`daemon`, `console`).
 - Nodos de usuario: ejecución del `main.sh` propio de cada nodo.
 - Múltiples repositorios configurados en `config.toml`.
+- Programación periódica de workflows (`schedule.every`).
 
 Pendiente:
 
 - `retry` con backoff real.
 - `join` para recoger los resultados del fan-out.
+- Soporte de `cron` en `schedule`.
 - LaunchAgent/PLIST en macOS para arrancar el daemon al iniciar
   sesión.
-- Auto-run al detectar cambios en un workflow.
 - Colorear el mapa de flujos según el estado durante la ejecución.
 - Empaquetar e instalar `jawt` como gem global.

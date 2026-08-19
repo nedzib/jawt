@@ -11,7 +11,7 @@ module Jawt
     DEFAULT_PID = File.join(Dir.home, ".config", "jawt", "daemon.pid")
     LOG_DIR = File.join(Dir.home, ".config", "jawt", "logs")
 
-    Run = Struct.new(:id, :workflow, :status, :started_at, :finished_at,
+    Run = Struct.new(:id, :workflow, :path, :status, :started_at, :finished_at,
                      :report, :log, keyword_init: true) do
       def to_h
         {
@@ -44,6 +44,7 @@ module Jawt
       @clients = []
       @runs = {}
       @workflows = {}
+      @last_run = {}
       @run_seq = 0
       @mutex = Mutex.new
     end
@@ -59,6 +60,7 @@ module Jawt
           ready.first.each { |server| accept_client(server) }
         end
         refresh_workflows
+        run_due_schedules
         prune_clients
       end
     ensure
@@ -207,12 +209,41 @@ module Jawt
 
       workflow = matches.first
       run_id = next_run_id
-      run = Run.new(id: run_id, workflow: workflow["name"], status: :running,
-                    started_at: Time.now, finished_at: nil, report: nil, log: [])
+      run = Run.new(id: run_id, workflow: workflow["name"], path: workflow["path"],
+                    status: :running, started_at: Time.now, finished_at: nil,
+                    report: nil, log: [])
       @mutex.synchronize { @runs[run_id] = run }
 
       Thread.new { execute_run(run, workflow) }
       run_id
+    end
+
+    def run_due_schedules
+      due_workflows.each do |path|
+        @last_run[path] = Time.now
+        start_run(path)
+      end
+    end
+
+    def due_workflows(now = Time.now)
+      @mutex.synchronize do
+        @workflows.filter_map do |path, wf|
+          workflow = wf["workflow"]
+          next unless workflow && wf["valid"]
+          schedule = workflow.schedule
+          next unless schedule&.interval?
+          next if running_for_path?(path)
+
+          last = @last_run[path]
+          next if last && now - last < schedule.interval_seconds
+
+          path
+        end
+      end
+    end
+
+    def running_for_path?(path)
+      @runs.values.any? { |r| r.path == path && r.status == :running }
     end
 
     def execute_run(run, workflow)

@@ -72,6 +72,24 @@ class DaemonTest < Minitest::Test
     thread&.join(2)
   end
 
+  def test_scheduled_workflow_is_due
+    write_workflow("sched", "echo hi")
+    File.write(
+      File.join(@workflows_dir, "sched.workflow"),
+      workflow_yaml("sched", "echo hi", schedule: "1m")
+    )
+
+    daemon = Jawt::Daemon.new(workflows_dirs: [@workflows_dir], socket_path: @socket)
+    daemon.send(:refresh_workflows)
+
+    due = daemon.send(:due_workflows)
+    assert_equal 1, due.size
+    assert_includes due.first, "sched.workflow"
+
+    daemon.instance_variable_set(:@last_run, { due.first => Time.now })
+    assert_empty daemon.send(:due_workflows)
+  end
+
   private
 
   def start_daemon(dirs = [@workflows_dir])
@@ -90,25 +108,29 @@ class DaemonTest < Minitest::Test
     end
   end
 
-  def workflow_yaml(name, command)
-    <<~YAML
-      workflow:
-        name: #{name}
-        nodes:
-          start: { type: start }
-          cmd:
-            type: run
-            command: "#{command}"
-            shell: /bin/sh
-            interactive: false
-            login: false
-          end: { type: end }
-        edges:
-          - from: start.out
-            to: cmd.in
-          - from: cmd.out
-            to: end.in
-    YAML
+  def workflow_yaml(name, command, schedule: nil)
+    lines = []
+    lines << "workflow:"
+    lines << "  name: #{name}"
+    if schedule
+      lines << "  schedule:"
+      lines << "    every: #{schedule}"
+    end
+    lines << "  nodes:"
+    lines << "    start: { type: start }"
+    lines << "    cmd:"
+    lines << "      type: run"
+    lines << "      command: \"#{command}\""
+    lines << "      shell: /bin/sh"
+    lines << "      interactive: false"
+    lines << "      login: false"
+    lines << "    end: { type: end }"
+    lines << "  edges:"
+    lines << "    - from: start.out"
+    lines << "      to: cmd.in"
+    lines << "    - from: cmd.out"
+    lines << "      to: end.in"
+    lines.join("\n") + "\n"
   end
 
   def runs(client)

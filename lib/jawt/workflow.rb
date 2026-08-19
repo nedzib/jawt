@@ -11,14 +11,16 @@ module Jawt
     DEFAULT_FROM_PORT = "out"
     DEFAULT_TO_PORT = "in"
 
-    attr_reader :name, :description, :requires, :nodes, :edges
+    attr_reader :name, :description, :requires, :nodes, :edges, :schedule
 
-    def initialize(name:, description: "", requires: [], nodes: {}, edges: [])
+    def initialize(name:, description: "", requires: [], nodes: {}, edges: [],
+                   schedule: nil)
       @name = name.to_s
       @description = description.to_s
       @requires = Array(requires).map(&:to_s)
       @nodes = nodes
       @edges = edges
+      @schedule = schedule
     end
 
     def node(id)
@@ -67,7 +69,8 @@ module Jawt
         description: wf["description"],
         requires: wf["requires"],
         nodes: nodes,
-        edges: edges
+        edges: edges,
+        schedule: Schedule.parse(wf["schedule"])
       )
     end
 
