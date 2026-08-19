@@ -5,10 +5,11 @@ require "toml-rb"
 module Jawt
   class Node
     attr_reader :name, :description, :inputs, :outputs, :ports,
-                :cardinality, :on_failure, :retries
+                :cardinality, :on_failure, :retries, :dir, :exec
 
     def initialize(name:, description: "", inputs: {}, outputs: {}, ports: {},
-                   cardinality: "single", on_failure: "stop", retries: nil)
+                   cardinality: "single", on_failure: "stop", retries: nil,
+                   dir: nil, exec: nil)
       @name = name.to_s
       @description = description.to_s
       @inputs = normalize_inputs(inputs)
@@ -19,6 +20,8 @@ module Jawt
       @cardinality = cardinality.to_s
       @on_failure = on_failure.to_s
       @retries = retries
+      @dir = dir
+      @exec = exec
     end
 
     def input(name)
@@ -56,7 +59,9 @@ module Jawt
         ports: data["ports"] || {},
         cardinality: behavior["cardinality"] || "single",
         on_failure: behavior["on_failure"] || "stop",
-        retries: behavior["retry"]
+        retries: behavior["retry"],
+        dir: File.dirname(path),
+        exec: data["exec"]
       )
     end
 

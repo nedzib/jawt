@@ -112,13 +112,27 @@ Cada nodo vive en `~/.config/jawt/nodes/<nombre>/` y se compone de:
 - `node.toml`: manifiesto que declara el contrato (inputs, outputs,
   puertos y comportamiento).
 - Un ejecutable (`main.sh`, `main.rb`, `main.py`, ...) que implementa
-  la lógica.
+  la lógica. Se resuelve con `exec` (por defecto `main.sh`).
+
+El ejecutable recibe los inputs como variables de entorno
+(`JAWT_INPUT_<NOMBRE>`) y como JSON en stdin. Devuelve los outputs como
+un objeto JSON en stdout; si el nodo declara un único output, puede
+devolver el valor en texto plano. Un exit code distinto de cero marca
+el nodo como fallido.
+
+```sh
+#!/bin/sh
+# inputs: $JAWT_INPUT_NOMBRE, JSON en stdin
+# outputs: objeto JSON en stdout
+echo "{\"saludo\":\"hola $JAWT_INPUT_NOMBRE\"}"
+```
 
 Ejemplo de `node.toml`:
 
 ```toml
 name = "run"
 description = "Ejecuta un comando en el shell"
+exec = "main.sh"
 
 [inputs]
 command = { type = "string", required = true }
@@ -400,10 +414,10 @@ Hecho:
 - Manejo de fallos (`stop`, `continue`, `retry`).
 - Multiplexor con fan-out.
 - Daemon como servicio + consola (`daemon`, `console`).
+- Nodos de usuario: ejecución del `main.sh` propio de cada nodo.
 
 Pendiente:
 
-- Nodos de usuario: ejecutar el `main.sh` propio de cada nodo.
 - `retry` con backoff real.
 - `join` para recoger los resultados del fan-out.
 - LaunchAgent/PLIST en macOS para arrancar el daemon al iniciar

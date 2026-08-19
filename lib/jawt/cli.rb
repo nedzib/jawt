@@ -294,7 +294,11 @@ module Jawt
       FileUtils.mkdir_p(dir)
       manifest = File.join(dir, "node.toml")
       File.write(manifest, node_template(name))
+      script = File.join(dir, "main.sh")
+      File.write(script, node_script_template)
+      File.chmod(0o755, script)
       puts green("creado") + "  #{manifest}"
+      puts "  #{script}"
     end
 
     def node_edit(name)
@@ -351,6 +355,7 @@ module Jawt
       <<~TOML
         name = "#{name}"
         description = ""
+        exec = "main.sh"
 
         [inputs]
 
@@ -363,6 +368,15 @@ module Jawt
         cardinality = "single"
         on_failure = "stop"
       TOML
+    end
+
+    def node_script_template
+      <<~SH
+        #!/bin/sh
+        # Entrada: variables JAWT_INPUT_* y JSON en stdin.
+        # Salida: un objeto JSON con los outputs declarados en node.toml.
+        echo '{}'
+      SH
     end
 
     def status_mark(status)

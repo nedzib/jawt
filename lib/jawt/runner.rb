@@ -2,6 +2,7 @@
 
 require "open3"
 require "time"
+require "json"
 
 module Jawt
   class Runner
@@ -175,7 +176,7 @@ module Jawt
       when "run" then run_command(spec, inputs)
       when "condition" then run_condition(spec, results)
       when "multiplex" then run_multiplex(spec, inputs, workflow, results)
-      else [{}, ["out"], nil, []]
+      else run_user_node(spec, node, inputs)
       end
     end
 
@@ -220,6 +221,74 @@ module Jawt
       downstream = workflow.outgoing_edges(spec.id).select { |e| e.from.port == "out" }
       downstream.each { |edge| @fan_out[edge.to.node] = items }
       [{ "items" => items }, ["out"], nil, []]
+    end
+
+    def run_user_node(spec, node, inputs)
+      exe = resolve_executable(node)
+      raise "el nodo '#{node.name}' no tiene ejecutable en #{node.dir}" unless exe
+
+      env = inputs.each_with_object({}) do |(k, v), acc|
+        acc["JAWT_INPUT_#{k.upcase}"] = serialize_value(v)
+      end
+
+      stdout, stderr, status = Open3.capture3(
+        env, *exec_command(exe),
+        stdin_data: JSON.generate(inputs),
+        chdir: spec.config["cwd"] || Dir.pwd
+      )
+      exit_code = status.exitstatus || (status.success? ? 0 : 1)
+
+      @logger.log(spec.id, stderr.strip) unless stderr.to_s.strip.empty?
+      outputs = parse_outputs(stdout, node)
+      error = if exit_code.zero?
+                nil
+              else
+                detail = stderr.to_s.strip
+                base = "el nodo '#{node.name}' terminó con exit code #{exit_code}"
+                detail.empty? ? base : "#{base}: #{detail}"
+              end
+      [outputs, ["out"], error, []]
+    end
+
+    def resolve_executable(node)
+      return nil unless node.dir
+
+      candidates = [node.exec, "main.sh", "main.rb", "main.py", "run"].compact
+      candidates.map { |c| File.join(node.dir, c) }.find { |p| File.file?(p) }
+    end
+
+    def exec_command(exe)
+      return [exe] if File.executable?(exe)
+
+      case File.extname(exe)
+      when ".rb" then ["ruby", exe]
+      when ".py" then ["python3", exe]
+      else ["sh", exe]
+      end
+    end
+
+    def serialize_value(value)
+      return "" if value.nil?
+      return value.to_s unless value.is_a?(Array) || value.is_a?(Hash)
+
+      JSON.generate(value)
+    end
+
+    def parse_outputs(stdout, node)
+      text = stdout.to_s.strip
+      parsed = begin
+        JSON.parse(text)
+      rescue JSON::ParserError
+        nil
+      end
+
+      if parsed.is_a?(Hash)
+        parsed.each_with_object({}) { |(k, v), acc| acc[k.to_s] = v }
+      elsif node.outputs.size == 1
+        { node.outputs.keys.first => text }
+      else
+        raise "el nodo '#{node.name}' no devolvió un JSON válido con sus outputs"
+      end
     end
 
     def resolve(str, results)
