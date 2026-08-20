@@ -52,7 +52,7 @@ module Jawt
     end
 
     def handle_key(key)
-      if @mode == :graph
+      if @mode != :list
         @mode = :list if key && !QUIT_KEYS.include?(key)
         return
       end
@@ -60,6 +60,7 @@ module Jawt
       case key
       when "r", "R" then run_selected
       when "g", "G" then @mode = :graph
+      when "l", "L" then @mode = :logs
       when "\e[A", "k" then @selected = [@selected - 1, 0].max
       when "\e[B", "j" then @selected += 1
       end
@@ -74,10 +75,10 @@ module Jawt
     end
 
     def render_fullscreen
-      if @mode == :graph
-        render_graph
-      else
-        render_list
+      case @mode
+      when :graph then render_graph
+      when :logs then render_logs
+      else render_list
       end
     end
 
@@ -100,14 +101,14 @@ module Jawt
       end
       out << ""
       out << bold("Runs:")
-      runs.each { |run| out << run_line(run) }
+      runs.first(5).each { |run| out << run_line(run) }
       out << ""
       out << bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
       if latest
         @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| out << "  #{dim(l)}" }
       end
       out << ""
-      out << dim("[r] ejecutar   [g] grafo   [↑/↓] mover   [q / Ctrl-C] salir")
+      out << dim("[r] ejecutar   [g] grafo   [l] logs   [↑/↓] mover   [q / Ctrl-C] salir")
       $stdout.print(CLEAR)
       $stdout.print(out.join("\r\n"))
       $stdout.flush
@@ -131,6 +132,26 @@ module Jawt
         $stdout.print(red("no se pudo generar el grafo (workflow inválido)") + "\r\n")
       end
       $stdout.print("\r\n" + dim("cualquier tecla para volver · q / Ctrl-C para salir") + "\r\n")
+      $stdout.flush
+    end
+
+    def render_logs
+      runs = @client.request("runs")
+      latest = runs.first
+
+      out = [bold(cyan("JAWT · runs y logs completos"))]
+      out << ""
+      out << bold("Runs (#{runs.size}):")
+      runs.each { |run| out << run_line(run) }
+      out << ""
+      out << bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
+      if latest
+        @client.request("logs", "run_id" => latest["id"]).each { |l| out << "  #{dim(l)}" }
+      end
+      out << ""
+      out << dim("cualquier tecla para volver · q / Ctrl-C para salir")
+      $stdout.print(CLEAR)
+      $stdout.print(out.join("\r\n"))
       $stdout.flush
     end
 
