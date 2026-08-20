@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "json"
 
 module Jawt
   class Console
@@ -16,13 +17,32 @@ module Jawt
       @mode = :list
     end
 
-    def run(once: false)
+    def run(once: false, json: false)
       raise "el daemon no está corriendo (ejecuta 'jawt daemon start')" unless @client.connected?
+
+      return render_json if json
 
       once ? render_once : fullscreen_loop
     end
 
     private
+
+    def render_json
+      workflows = @client.request("list")
+      runs = @client.request("runs")
+      latest = runs.first
+      logs = latest ? @client.request("logs", "run_id" => latest["id"]).last(5) : []
+      next_name = next_in_queue(workflows)
+
+      data = {
+        "workflows" => workflows.map do |wf|
+          wf.merge("next" => wf["name"] == next_name)
+        end,
+        "runs" => runs.first(5),
+        "logs" => logs
+      }
+      puts JSON.generate(data)
+    end
 
     def fullscreen_loop
       $stdout.print(ALT_ENTER)
