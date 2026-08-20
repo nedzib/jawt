@@ -236,11 +236,11 @@ module Jawt
       end
       puts
       puts bold("Runs:")
-      runs.each { |run| puts run_line(run) }
+      runs.first(5).each { |run| puts run_line(run) }
       puts
       puts bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
       if latest
-        @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| puts "  #{l}" }
+        @client.request("logs", "run_id" => latest["id"]).last(5).each { |l| puts "  #{l}" }
       end
     end
 
