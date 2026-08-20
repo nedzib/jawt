@@ -140,7 +140,6 @@ module Jawt
 
     def cmd_console(argv)
       once = argv.include?("--once")
-      json = argv.include?("--json")
       socket = Daemon::DEFAULT_SOCKET
 
       unless File.exist?(socket)
@@ -149,7 +148,7 @@ module Jawt
       end
 
       client = DaemonClient.new(socket_path: socket).connect
-      Console.new(client).run(once: once, json: json)
+      Console.new(client).run(once: once)
     ensure
       client&.close
     end
