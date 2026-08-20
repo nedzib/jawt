@@ -105,7 +105,7 @@ module Jawt
       out << ""
       out << bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
       if latest
-        @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| out << "  #{dim(l)}" }
+        @client.request("logs", "run_id" => latest["id"]).last(5).each { |l| out << "  #{dim(l)}" }
       end
       out << ""
       out << dim("[r] ejecutar   [g] grafo   [l] logs   [↑/↓] mover   [q / Ctrl-C] salir")
