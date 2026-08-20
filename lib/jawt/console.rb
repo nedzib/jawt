@@ -200,6 +200,7 @@ module Jawt
     def render_once
       workflows = @client.request("list")
       runs = @client.request("runs")
+      latest = runs.first
       next_name = next_in_queue(workflows)
 
       puts bold("Workflows:")
@@ -215,6 +216,11 @@ module Jawt
       puts
       puts bold("Runs:")
       runs.each { |run| puts run_line(run) }
+      puts
+      puts bold("Logs (#{latest ? latest['id'] : 'ninguno'}):")
+      if latest
+        @client.request("logs", "run_id" => latest["id"]).last(15).each { |l| puts "  #{l}" }
+      end
     end
 
     def display_name(wf)
