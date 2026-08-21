@@ -1,0 +1,17 @@
+name = "pr-review"
+description = "PRs donde soy revisor directo (excluye asignación por equipo)"
+exec = "main.rb"
+
+[inputs]
+repo = { type = "string", required = false }
+
+[outputs]
+count = "integer"
+prs = "array<object>"
+
+[ports]
+out = ["count", "prs"]
+
+[behavior]
+cardinality = "single"
+on_failure = "stop"

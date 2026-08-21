@@ -1,0 +1,17 @@
+name = "notify"
+description = "Muestra una notificación de macOS"
+exec = "main.sh"
+
+[inputs]
+title = { type = "string", required = true }
+message = { type = "string", required = true }
+
+[outputs]
+result = "string"
+
+[ports]
+out = ["result"]
+
+[behavior]
+cardinality = "single"
+on_failure = "stop"

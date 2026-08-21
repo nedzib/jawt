@@ -1,0 +1,14 @@
+name = "pr-open"
+description = "Lista los PR abiertos del usuario autenticado"
+exec = "main.rb"
+
+[outputs]
+count = "integer"
+prs = "array<object>"
+
+[ports]
+out = ["count", "prs"]
+
+[behavior]
+cardinality = "single"
+on_failure = "stop"
