@@ -289,6 +289,16 @@ workflow:
 El intervalo acepta `s`, `m`, `h` y `d` (segundos, minutos, horas y
 días).
 
+Un nodo puede declarar un `label` para mostrar un nombre legible en el
+grafo (en lugar de su `id`):
+
+```yaml
+nodes:
+  queue:
+    type: pr-review
+    label: "Buscar PRs de revisión"
+```
+
 Los valores de configuración de un nodo pueden interpolar outputs de
 nodos previos con `${nodo.campo}`:
 

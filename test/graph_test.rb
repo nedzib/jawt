@@ -16,6 +16,24 @@ class GraphTest < Minitest::Test
     assert_includes graph, "└"
   end
 
+  def test_render_uses_label_when_present
+    yaml = <<~YAML
+      workflow:
+        name: deploy
+        nodes:
+          start: { type: start, label: "Inicio" }
+          end: { type: end, label: "Fin" }
+        edges:
+          - from: start.out
+            to: end.in
+    YAML
+    graph = Jawt::Graph.new(Jawt::Workflow.from_yaml(yaml)).render
+    assert_includes graph, "Inicio"
+    assert_includes graph, "Fin"
+    refute_includes graph, "start"
+    refute_includes graph, "end"
+  end
+
   private
 
   def valid_yaml

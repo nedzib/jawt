@@ -45,6 +45,20 @@ class WorkflowTest < Minitest::Test
     end
   end
 
+  def test_label_is_extracted_from_config
+    wf = Jawt::Workflow.from_yaml(<<~YAML)
+      workflow:
+        name: x
+        nodes:
+          start: { type: start, label: "Inicio" }
+          end: { type: end }
+        edges: []
+    YAML
+    assert_equal "Inicio", wf.node("start").label
+    refute wf.node("start").config.key?("label")
+    assert_equal "end", wf.label("end")
+  end
+
   private
 
   def valid_yaml

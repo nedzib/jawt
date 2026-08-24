@@ -5,7 +5,7 @@ require "yaml"
 module Jawt
   class Workflow
     PortRef = Struct.new(:node, :port, keyword_init: true)
-    NodeSpec = Struct.new(:id, :type, :config, keyword_init: true)
+    NodeSpec = Struct.new(:id, :type, :config, :label, keyword_init: true)
     Edge = Struct.new(:from, :to, keyword_init: true)
 
     DEFAULT_FROM_PORT = "out"
@@ -25,6 +25,13 @@ module Jawt
 
     def node(id)
       nodes[id.to_s]
+    end
+
+    def label(id)
+      spec = node(id)
+      return id.to_s unless spec
+
+      spec.label.to_s.empty? ? spec.id : spec.label.to_s
     end
 
     def start_nodes
@@ -81,8 +88,9 @@ module Jawt
       type = spec["type"] || spec[:type]
       raise Error, "nodo '#{id}' sin 'type'" if type.nil?
 
-      config = spec.reject { |k, _| k.to_s == "type" }
-      NodeSpec.new(id: id, type: type.to_s, config: config)
+      config = spec.reject { |k, _| %w[type label].include?(k.to_s) }
+      label = spec["label"] || spec[:label]
+      NodeSpec.new(id: id, type: type.to_s, config: config, label: label&.to_s)
     end
   end
 end

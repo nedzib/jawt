@@ -88,15 +88,22 @@ repo), `repo` (`owner/repo`) y `kind` (agente) en el workflow:
 ```yaml
     queue:
       type: pr-review
+      label: "Buscar PRs de revisión"
       repo: "owner/repo"
     worktree:
       type: herdr-worktree
+      label: "Abrir worktree"
       cwd: "/Users/tu/ruta/al/repo"
     agent:
       type: herdr-agent
+      label: "Revisar con agente"
       kind: claude
       prompt: "Revisa el PR {number} ({branch})..."
 ```
+
+El campo opcional `label` sustituye al `id` en el grafo, para dar un
+nombre legible a cada nodo (ej. `Buscar PRs de revisión` en vez de
+`queue`).
 
 El `prompt` acepta los placeholders `{number}`, `{branch}`, `{url}` y
 `{title}` (sustituidos desde el item).

@@ -8,26 +8,37 @@ workflow:
   requires: [pr-review, herdr-worktree, notify, herdr-agent]
 
   nodes:
-    start: { type: start }
+    start:
+      type: start
+      label: "Inicio"
     queue:
       type: pr-review
+      label: "Buscar PRs de revisión"
       repo: "owner/repo"
     fan1:
       type: multiplex
+      label: "Fan-out"
     worktree:
       type: herdr-worktree
+      label: "Abrir worktree"
       cwd: "/Users/tu/ruta/al/repo"
     fan2:
       type: multiplex
+      label: "Fan-out"
     notify:
       type: notify
+      label: "Notificar"
     fan3:
       type: multiplex
+      label: "Fan-out"
     agent:
       type: herdr-agent
+      label: "Revisar con agente"
       kind: claude
       prompt: "Revisa el PR {number} (`{branch}`, repo owner/repo). Compara esta rama contra master (`git diff master...HEAD`) y haz un code review siguiendo las buenas prácticas del proyecto. Reporta solo hallazgos accionables, en español, con ruta, principio violado, problema y fix sugerido."
-    end: { type: end }
+    end:
+      type: end
+      label: "Fin"
 
   edges:
     - from: start.out

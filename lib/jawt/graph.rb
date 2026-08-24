@@ -38,7 +38,7 @@ module Jawt
     end
 
     def box_width
-      max = @workflow.nodes.keys.map(&:length).max || 0
+      max = @workflow.nodes.keys.map { |id| @workflow.label(id).length }.max || 0
       max + (PADDING * 2) + 2
     end
 
@@ -117,7 +117,7 @@ module Jawt
 
     def draw_boxes(canvas, positions)
       positions.each do |id, pos|
-        canvas.box(pos[:left], pos[:top], box_width, BOX_HEIGHT, id)
+        canvas.box(pos[:left], pos[:top], box_width, BOX_HEIGHT, @workflow.label(id))
       end
     end
 
