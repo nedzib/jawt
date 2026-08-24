@@ -1,0 +1,18 @@
+name = "herdr-worktree"
+description = "Abre o crea el worktree de Herdr de una rama"
+exec = "main.rb"
+
+[inputs]
+item = { type = "object", required = false }
+branch = { type = "string", required = false }
+cwd = { type = "string", required = false }
+
+[outputs]
+items = "array<object>"
+
+[ports]
+out = ["items"]
+
+[behavior]
+cardinality = "single"
+on_failure = "stop"

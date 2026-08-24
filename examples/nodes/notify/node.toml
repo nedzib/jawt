@@ -1,16 +1,17 @@
 name = "notify"
-description = "Muestra una notificación de macOS"
-exec = "main.sh"
+description = "Muestra una notificación de macOS (estática o por item de fan-out)"
+exec = "main.rb"
 
 [inputs]
-title = { type = "string", required = true }
-message = { type = "string", required = true }
+title = { type = "string", required = false }
+message = { type = "string", required = false }
+item = { type = "object", required = false }
 
 [outputs]
-result = "string"
+items = "array<object>"
 
 [ports]
-out = ["result"]
+out = ["items"]
 
 [behavior]
 cardinality = "single"

@@ -1,0 +1,20 @@
+name = "herdr-agent"
+description = "Inicia un agente en un pane de Herdr y le envía un prompt"
+exec = "main.rb"
+
+[inputs]
+item = { type = "object", required = false }
+pane_id = { type = "string", required = false }
+name = { type = "string", required = false }
+kind = { type = "string", required = false }
+prompt = { type = "string", required = false }
+
+[outputs]
+items = "array<object>"
+
+[ports]
+out = ["items"]
+
+[behavior]
+cardinality = "single"
+on_failure = "stop"

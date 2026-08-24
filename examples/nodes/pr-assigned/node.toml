@@ -4,13 +4,14 @@ exec = "main.rb"
 
 [inputs]
 assignee = { type = "string", required = false }
+repo = { type = "string", required = false }
 
 [outputs]
 count = "integer"
-prs = "array<object>"
+items = "array<object>"
 
 [ports]
-out = ["count", "prs"]
+out = ["count", "items"]
 
 [behavior]
 cardinality = "single"

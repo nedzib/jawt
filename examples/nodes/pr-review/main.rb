@@ -31,7 +31,7 @@ login = login_out.strip
 out, err, status = capture(
   "gh", "pr", "list", "--repo", repo,
   "--search", "review-requested:@me is:open",
-  "--json", "number,title,url"
+  "--json", "number,title,url,headRefName,author"
 )
 if status.exitstatus != 0
   warn err
@@ -40,7 +40,7 @@ end
 
 candidates = out.to_s.empty? ? [] : JSON.parse(out)
 
-prs = candidates.filter_map do |pr|
+items = candidates.filter_map do |pr|
   number = pr["number"]
 
   reviewers_out, _, rstatus = capture(
@@ -52,7 +52,13 @@ prs = candidates.filter_map do |pr|
   reviewers = reviewers_out.to_s.empty? ? [] : JSON.parse(reviewers_out)
   next unless reviewers.include?(login)
 
-  { "number" => number, "title" => pr["title"], "url" => pr["url"] }
+  {
+    "number" => number,
+    "title" => pr["title"],
+    "url" => pr["url"],
+    "branch" => pr["headRefName"],
+    "author" => pr.dig("author", "login")
+  }
 end
 
-puts JSON.generate("count" => prs.length, "prs" => prs)
+puts JSON.generate("count" => items.length, "items" => items)
